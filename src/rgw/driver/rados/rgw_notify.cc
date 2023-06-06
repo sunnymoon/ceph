@@ -977,6 +977,50 @@ int publish_abort(reservation_t& res) {
   return 0;
 }
 
+int get_persistent_queue_by_topic_name(const DoutPrefixProvider* dpp, librados::IoCtx& rados_ioctx, std::string& topic_name,
+                                       std::size_t& number_of_reservations, bufferlist& bl, optional_yield y)
+{
+  librados::ObjectReadOperation op;
+  int rval = 0;
+  op.read(0, 0, &bl, &rval);
+  if(rval < 0) {
+    ldpp_dout(dpp, 1) << "ERROR: something failed in preparing read operation: " << rval << dendl;
+    return 0;
+  }
+
+  auto ret = rgw_rados_operate(dpp, rados_ioctx, topic_name, &op, &bl, y);
+  if (ret == -ENOENT) {
+    // queue list object was not created - nothing to do
+    return 0;
+  }
+  if (ret < 0) {
+    ldpp_dout(dpp, 1) << "ERROR: failed to read queue list. error: " << ret << dendl;
+    return ret;
+  }
+
+  cls_2pc_queue_list_reservations(op, &bl, &rval);
+  if(rval < 0) {
+    ldpp_dout(dpp, 1) << "ERROR: something failed to read reservation list: " << rval << dendl;
+    return 0;
+  }
+
+  ret = rados_ioctx.operate(topic_name, &op, &bl);
+  if (ret < 0) {
+    ldpp_dout(dpp, 1) << "ERROR: failed to read queue list reservation: " << ret << dendl;
+    return ret;
+  }
+
+  cls_2pc_reservations reservations;
+  ret = cls_2pc_queue_list_reservations_result(bl, reservations);
+  if (ret < 0) {
+    ldpp_dout(dpp, 1) << "ERROR: failed to parse list reservation result: " << ret << dendl;
+    return ret;
+  }
+  number_of_reservations = reservations.size();
+
+  return 0;
+}
+
 reservation_t::reservation_t(const DoutPrefixProvider* _dpp,
 			     rgw::sal::RadosStore* _store,
 			     const req_state* _s,

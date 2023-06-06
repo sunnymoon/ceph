@@ -117,5 +117,8 @@ int publish_commit(rgw::sal::Object* obj,
 // cancel the reservation
 int publish_abort(reservation_t& reservation);
 
+int get_persistent_queue_by_topic_name(const DoutPrefixProvider* dpp, librados::IoCtx& rados_ioctx, std::string& topic_name,
+                                       std::size_t& number_of_reservations, bufferlist& bl, optional_yield y);
+
 }
 

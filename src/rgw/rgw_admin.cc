@@ -840,6 +840,7 @@ enum class OPT {
   PUBSUB_NOTIFICATION_LIST,
   PUBSUB_NOTIFICATION_GET,
   PUBSUB_NOTIFICATION_RM,
+  PUBSUB_PERSISTENT_QUEUE,
   SCRIPT_PUT,
   SCRIPT_GET,
   SCRIPT_RM,
@@ -1074,6 +1075,7 @@ static SimpleCmd::Commands all_cmds = {
   { "notification list", OPT::PUBSUB_NOTIFICATION_LIST },
   { "notification get", OPT::PUBSUB_NOTIFICATION_GET },
   { "notification rm", OPT::PUBSUB_NOTIFICATION_RM },
+  { "persistent-queue", OPT::PUBSUB_PERSISTENT_QUEUE },
   { "script put", OPT::SCRIPT_PUT },
   { "script get", OPT::SCRIPT_GET },
   { "script rm", OPT::SCRIPT_RM },
@@ -4195,6 +4197,7 @@ int main(int argc, const char **argv)
        OPT::PUBSUB_NOTIFICATION_LIST,
 			 OPT::PUBSUB_TOPIC_GET,
        OPT::PUBSUB_NOTIFICATION_GET,
+       OPT::PUBSUB_PERSISTENT_QUEUE,
 			 OPT::SCRIPT_GET,
     };
 
@@ -4280,7 +4283,8 @@ int main(int argc, const char **argv)
                           && opt_cmd != OPT::PUBSUB_TOPIC_GET
                           && opt_cmd != OPT::PUBSUB_NOTIFICATION_GET
                           && opt_cmd != OPT::PUBSUB_TOPIC_RM
-                          && opt_cmd != OPT::PUBSUB_NOTIFICATION_RM) {
+                          && opt_cmd != OPT::PUBSUB_NOTIFICATION_RM
+                          && opt_cmd != OPT::PUBSUB_PERSISTENT_QUEUE) {
         cerr << "ERROR: --tenant is set, but there's no user ID" << std::endl;
         return EINVAL;
       }
@@ -10507,7 +10511,8 @@ next:
       return EINVAL;
     }
 
-    ret = rgw::notify::remove_persistent_topic(dpp(), static_cast<rgw::sal::RadosStore*>(driver)->getRados()->get_notif_pool_ctx(), topic_name, null_yield);
+    ret = rgw::notify::remove_persistent_topic(
+        dpp(), static_cast<rgw::sal::RadosStore*>(driver)->getRados()->get_notif_pool_ctx(), topic_name, null_yield);
     if (ret < 0) {
       cerr << "ERROR: could not remove persistent topic: " << cpp_strerror(-ret) << std::endl;
       return -ret;
@@ -10550,6 +10555,23 @@ next:
     } else {
       ret = b.remove_notification_by_id(dpp(), notification_id, null_yield);
     }
+  }
+
+  if (opt_cmd == OPT::PUBSUB_PERSISTENT_QUEUE) {
+    if (topic_name.empty()) {
+      cerr << "ERROR: topic name was not provided (via --topic)" << std::endl;
+      return EINVAL;
+    }
+
+    bufferlist bl;
+    std::size_t number_of_reservations;
+    ret = rgw::notify::get_persistent_queue_by_topic_name(
+        dpp(), static_cast<rgw::sal::RadosStore*>(driver)->getRados()->get_notif_pool_ctx(), topic_name, number_of_reservations, bl, null_yield);
+    if (ret < 0) {
+      cerr << "ERROR: could not get persistent queue: " << cpp_strerror(-ret) << std::endl;
+      return -ret;
+    }
+    std::cout << "persistent queue len: " << bl.length() << ", number of reservations: " << number_of_reservations << std::endl;
   }
 
   if (opt_cmd == OPT::SCRIPT_PUT) {
