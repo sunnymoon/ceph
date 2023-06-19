@@ -10,6 +10,7 @@ struct cls_2pc_reservation
   inline static const id_t NO_ID{0};
   uint64_t size;        // how many entries are reserved
   ceph::coarse_real_time timestamp;  // when the reservation was done (used for cleaning stale reservations)
+  uint32_t entries;
 
   cls_2pc_reservation(uint64_t _size, ceph::coarse_real_time _timestamp) :
       size(_size), timestamp(_timestamp) {}
@@ -20,6 +21,7 @@ struct cls_2pc_reservation
     ENCODE_START(1, 1, bl);
     encode(size, bl);
     encode(timestamp, bl);
+    encode(entries, bl);
     ENCODE_FINISH(bl);
   }
 
@@ -27,6 +29,7 @@ struct cls_2pc_reservation
     DECODE_START(1, bl);
     decode(size, bl);
     decode(timestamp, bl);
+    decode(entries, bl);
     DECODE_FINISH(bl);
   }
 };
@@ -38,6 +41,7 @@ struct cls_2pc_urgent_data
 {
   uint64_t reserved_size{0};   // pending reservations size in bytes
   cls_2pc_reservation::id_t last_id{cls_2pc_reservation::NO_ID}; // last allocated id
+  uint32_t committed_entries{0};
   cls_2pc_reservations reservations; // reservation list (keyed by id)
   bool has_xattrs{false};
 
@@ -45,6 +49,7 @@ struct cls_2pc_urgent_data
     ENCODE_START(1, 1, bl);
     encode(reserved_size, bl);
     encode(last_id, bl);
+    encode(committed_entries, bl);
     encode(reservations, bl);
     encode(has_xattrs, bl);
     ENCODE_FINISH(bl);
@@ -54,6 +59,7 @@ struct cls_2pc_urgent_data
     DECODE_START(1, bl);
     decode(reserved_size, bl);
     decode(last_id, bl);
+    decode(committed_entries, bl);
     decode(reservations, bl);
     decode(has_xattrs, bl);
     DECODE_FINISH(bl);

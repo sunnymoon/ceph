@@ -113,6 +113,7 @@ static int cls_2pc_queue_reserve(cls_method_context_t hctx, bufferlist *in, buff
   std::tie(last_reservation, result) = urgent_data.reservations.emplace(std::piecewise_construct,
           std::forward_as_tuple(urgent_data.last_id),
           std::forward_as_tuple(res_op.size, ceph::coarse_real_clock::now()));
+  urgent_data.reservations[urgent_data.last_id].entries = res_op.entries;
   if (!result) {
     // an old reservation that was never committed or aborted is in the map
     // caller should try again assuming other IDs are ok
@@ -268,6 +269,7 @@ static int cls_2pc_queue_commit(cls_method_context_t hctx, bufferlist *in, buffe
   }
 
   urgent_data.reserved_size -= res.size;
+  urgent_data.committed_entries += res.entries;
 
   if (xattr_reservations.empty()) {
     // remove the reservation from urgent data
