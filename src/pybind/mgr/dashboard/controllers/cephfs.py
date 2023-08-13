@@ -376,7 +376,10 @@ class CephFS(RESTController):
                 client['type'] = "kernel"
                 client['version'] = client['client_metadata']['kernel_version']
                 client['hostname'] = client['client_metadata']['hostname']
-                client['root'] = client['client_metadata']['root']
+                if "root" in client['client_metadata']: #for very old clients, root does not seem to be available
+                    client['root'] = client['client_metadata']['root']
+                else:
+                    client['root'] = "unknown" 
             else:  # pragma: no cover - no complexity there
                 client['type'] = "unknown"
                 client['version'] = ""
